@@ -27,24 +27,30 @@ A Streamlit-based dashboard for exploring, categorizing, and visualizing Apple s
 
 ## 🛠 Installation
 
-1. **Clone the repo**
+1. **Clone this repository**
    ```bash
    git clone https://github.com/your-org/sysdiagnose-analysis.git
    cd sysdiagnose-analysis
    ```
 
-2. **Create a virtual environment**
+2. **(Required) Clone the Apple sysdiagnose data repo**
+   ```bash
+   # Inside the toolkit root, create a "sysdiagnose" subfolder:
+   git clone https://github.com/EC-DIGIT-CSIRC/sysdiagnose.git sysdiagnose
+   ```
+
+3. **Create a virtual environment**
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
 
-3. **Install dependencies**
+4. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **(Optional) Configure upload size**
+5. **(Optional) Configure upload size**
    In `.streamlit/config.toml`:
    ```toml
    [server]
@@ -59,12 +65,30 @@ A Streamlit-based dashboard for exploring, categorizing, and visualizing Apple s
 
 ## 🚦 Usage
 
-Run the Streamlit app:
+### 🔄 Pre-run Parsing & Analysis
+Before launching the Streamlit dashboard, ensure your sysdiagnose data is parsed and analyzed:
+
+```bash
+cd sysdiagnose
+# Activate your venv
+source venv/bin/activate
+# Initialize the archive (creates case folder)
+sysdiag init path/to/your/sysdiagnose.tar.gz
+# Parse all data
+sysdiag -c 1 parse all
+# Run all analysers
+sysdiag -c 1 analyse all
+```
+
+Run the Streamlit app (ensure the `sysdiagnose` folder is present next to `main.py`):
+
+Run the Streamlit app (ensure the `sysdiagnose` folder is present next to `main.py`):
+
 ```bash
 streamlit run main.py
 ```
 
-1. **Upload** your `sysdiagnose.tar.gz` archive via the sidebar.
+1. **Upload** your `sysdiagnose.tar.gz` archive via the sidebar or point to the cloned cases under `sysdiagnose/cases`.
 2. **Browse** files in the Explorer (use search or expand categories).
 3. **View** file contents or structured data in the File Viewer.
 4. **Inspect** creation trends in the Timeline tab.
@@ -88,14 +112,15 @@ streamlit run main.py
 ├── extraction.py         # sysdiagnose archive extractor
 ├── metadata.py           # File scanner & categorizer
 ├── constants.py          # Categorization rules & overrides
-├── views/                # UI modules
-│   ├── sidebar.py        # File navigation pane
-│   ├── file_viewer.py    # Two-column content viewer
-│   ├── timeline.py       # Altair timeline chart
-│   └── charts.py         # Altair dashboard charts
 ├── ai_summary.py         # OpenRouter LLM summary helper
 ├── requirements.txt      # Python dependencies
-└── .streamlit/           # Streamlit config (e.g. upload size)
+├── .streamlit/           # Streamlit config (e.g. upload size)
+└── views/                # UI modules
+    ├── sidebar.py        # File navigation pane
+    ├── file_viewer.py    # Two-column content viewer
+    ├── timeline.py       # Altair timeline chart
+    ├── charts.py         # Altair dashboard charts
+    └── dashboard.py      # Additional parsed-data dashboard views
 ```
 
 ---
@@ -105,5 +130,4 @@ streamlit run main.py
 1. Fork the repo & create a branch.
 2. Make your changes & commit.
 3. Submit a pull request with a clear description.
-
 
