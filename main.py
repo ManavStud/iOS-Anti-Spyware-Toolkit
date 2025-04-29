@@ -1,68 +1,34 @@
+# Page layout
 import streamlit as st
+st.set_page_config(layout='wide')
+st.title("Sysdiagnose Analysis")
 import pandas as pd
 import os
 import re
 from datetime import datetime
 from pathlib import Path
-
 from extraction import extract_sysdiagnose
 from metadata import scan_files
 from views.sidebar import render_sidebar
 from views.file_viewer import render_file
 from views.timeline import render_timeline
-from views.charts import render_dashboard
+from views.charts import render_charts
 from ai_summary import get_summary
 from constants import CATEGORY_PATTERNS
-import os
-import pandas as pd
-from pathlib import Path
-from datetime import datetime
-from constants import categorize
+#from views.report import render_report
+from views.dashboard import render_dashboard
+import random
 
 
-def scan_files(root_dir: str) -> pd.DataFrame:
-    """
-    Walk the extracted sysdiagnose directory, classify each file,
-    and return a DataFrame with file metadata and categories.
-    """
-    metadata = []
-    for dp, _, files in os.walk(root_dir):
-        for fname in files:
-            path = os.path.join(dp, fname)
-            relpath = os.path.relpath(path, root_dir)
-
-            # Read a snippet for content-based classification
-            raw_snippet = None
-            try:
-                with open(path, 'r', errors='ignore') as f:
-                    raw_snippet = f.read(1024)
-            except Exception:
-                pass
-
-            # Determine category using the multi-step logic
-            category = categorize(path, raw_snippet)
-
-            # File stats
-            stt = os.stat(path)
-            metadata.append({
-                'full_path': path,
-                'relpath': relpath,
-                'category': category,
-                'ctime': datetime.fromtimestamp(stt.st_ctime),
-                'mtime': datetime.fromtimestamp(stt.st_mtime),
-                'atime': datetime.fromtimestamp(stt.st_atime),
-                'size_bytes': stt.st_size
-            })
-
-    df = pd.DataFrame(metadata)
-    return df.sort_values('ctime').reset_index(drop=True)
-
-# Page layout
-st.set_page_config(layout='wide')
-st.title("Sysdiagnose Analysis")
 
 # --- Sidebar Inputs ---
-api_key = st.sidebar.text_input("API Key", type="password")
+keys_env = os.getenv("OPENROUTER_API_KEYS", "")
+key_list = [k.strip() for k in keys_env.split(",") if k.strip()]
+api_key = random.choice(key_list) if key_list else None
+
+# If none were set (or parsing failed), fall back to manual entry
+if not api_key:
+    api_key = st.sidebar.text_input("API Key", type="password")
 upload  = st.sidebar.file_uploader("Upload .tar.gz", type=["tar.gz"])
 if not upload:
     st.sidebar.info("Upload to begin.")
@@ -162,17 +128,37 @@ if 'selected' not in st.session_state:
     st.session_state.selected = None
 render_sidebar(glob_files, CATEGORY_PATTERNS, root_dir, st.session_state)
 
-# --- File Viewer & AI ---
-if st.session_state.selected:
-    render_file(st.session_state.selected)
-    if api_key and st.button("Generate Summary"):
-        st.write(get_summary(st.session_state.selected, api_key))
+
+
 
 # --- Tabs ---
-tab1, tab2, tab3 = st.tabs(["Explorer", "Timeline", "Charts"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Explorer", "Timeline", "Charts", "Ios Forensic Dashboard"]
+)  # st.tabs docs :contentReference[oaicite:5]{index=5}
+
 with tab1:
-    st.write("(Use sidebar)")
+    # --- File Viewer & AI ---
+    if st.session_state.selected:
+        render_file(st.session_state.selected)
+
+        # Only show the button if we have an API key
+        if api_key:
+            # st.button returns True only on the click that triggers a rerun :contentReference[oaicite:1]{index=1}
+            if st.button("Generate Summary", key="gen_sum"):
+                with st.spinner("Generating AI summary…"):
+                    summary = get_summary(
+                        path=st.session_state.selected,
+                        api_key=api_key
+                    )
+                st.subheader("AI-Generated Summary")
+                st.write(summary)
+        else:
+            st.info("Enter your API key to enable AI summaries.")
+
 with tab2:
     render_timeline(df_tl)
 with tab3:
-    render_dashboard(df_tl)
+    render_charts(df_tl)
+with tab4:
+    render_dashboard()
+
